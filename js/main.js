@@ -1,13 +1,9 @@
 /* =================================================================
-CALCULATOR v2 Modules:
-1. Parser — recursive-descent, no eval()
-2. State — single source of truth
-3. Routes — stealth config-driven trigger system
-4. History — persistent in-session log
-5. UI / Render — display + panel
-6. Animations — ripple, result pop, font-scaling
-7. Input — button clicks + full keyboard map
-================================================================= */
+ CALCULATOR v2 Modules:
+ 1. Parser — recursive-descent, no eval()
+ 2. State — single source of truth
+ 3. Routes — stealth config-driven trigger system
+ ================================================================= */
 
 /* ── 1. PARSER ──────────────────────────────────────────────────── */
 const Parser = (() => {
@@ -126,14 +122,14 @@ function launchSecureBlobRoute(targetUrl) {
   // Technique 1: Base64 Obfuscation
   const encodedUrl = btoa(targetUrl);
 
-  // Technique 2 & 3: JS Injection via a Blob URL Window wrapper
+  // Technique 2 & 3: JS Injection via Blob URL Wrapper Window
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Loading…</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #0e0e10; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0e10; }
   </style>
 </head>
 <body>
@@ -176,7 +172,9 @@ const Dispatcher = (() => {
   }
 
   function dispatch(expr, numResult) {
-    for (const k of Object.keys(_reg)) {
+    const keys = Object.keys(_reg);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
       if (_reg[k].test(expr, numResult)) {
         _reg[k].fire(expr, numResult);
         return true;
@@ -222,9 +220,16 @@ registerProductRoute(61, 47, () => {
   launchSecureBlobRoute('/secure-route');
 });
 
-registerResultRoute(1337, () => {
+registerResultRoute(1337, (_e, _r) => {
   console.info('%c🎯 l33t mode', 'color:#c8fa64;font-size:14px;font-weight:bold;');
 });
+/* =================================================================
+ CALCULATOR v2 Modules (Continued):
+ 4. History — persistent in-session log
+ 5. UI / Render — display + panel
+ 6. Animations — ripple, result pop, font-scaling
+ 7. Input — button clicks + full keyboard map
+ ================================================================= */
 
 /* ── 4. HISTORY ─────────────────────────────────────────────────── */
 function historyAdd(expr, result) {
@@ -286,6 +291,7 @@ function render() {
 }
 
 function renderHistory() {
+  if (!elHistoryEmpty || !elHistoryList) return;
   elHistoryEmpty.style.display = calcHistory.length ? 'none' : 'flex';
   elHistoryList.querySelectorAll('.history-item').forEach(n => n.remove());
   calcHistory.forEach((item, i) => {
@@ -308,8 +314,8 @@ function toggleHistory() {
   elHistoryToggle.setAttribute('aria-expanded', String(state.historyOpen));
 }
 
-elHistoryToggle.addEventListener('click', toggleHistory);
-elHistoryClear.addEventListener('click', () => { historyClear(); });
+if (elHistoryToggle) elHistoryToggle.addEventListener('click', toggleHistory);
+if (elHistoryClear) elHistoryClear.addEventListener('click', () => { historyClear(); });
 
 /* ── 6. ANIMATIONS ──────────────────────────────────────────────── */
 function ripple(btn) {
@@ -326,4 +332,150 @@ function ripple(btn) {
 function popResult() {
   elResult.classList.remove('flash','flash-pop');
   void elResult.offsetWidth;
-  elResult.classList.add
+  elResult.classList.add('flash');
+  setTimeout(() => {
+    elResult.classList.remove('flash');
+    elResult.classList.add('flash-pop');
+  }, 80);
+  setTimeout(() => elResult.classList.remove('flash-pop'), 380);
+}
+
+/* ── 7. INPUT HANDLING ──────────────────────────────────────────── */
+function handleAction(action, value, srcBtn) {
+  state.isError = false;
+  if (srcBtn) ripple(srcBtn);
+  switch (action) {
+    case 'digit': {
+      if (state.justEvaluated) {
+        state.expr = '';
+        state.justEvaluated = false;
+      }
+      if (value === '0' && state.expr === '0') break;
+      state.expr += value;
+      state.result = value;
+      state.activeOp = null;
+      break;
+    }
+    case 'decimal': {
+      if (state.justEvaluated) {
+        state.expr = '0.';
+        state.result = '0.';
+        state.justEvaluated = false;
+        break;
+      }
+      const last = state.expr.split(/[+\-*/]/).pop();
+      if (last.includes('.')) break;
+      if (state.expr === '' || /[+\-*/]$/.test(state.expr)) {
+        state.expr += '0.';
+        state.result = '0.';
+      } else {
+        state.expr += '.';
+        state.result += '.';
+      }
+      break;
+    }
+    case 'op': {
+      if (/[+\-*/]$/.test(state.expr)) {
+        state.expr = state.expr.slice(0, -1) + value;
+      } else if (state.expr === '') {
+        state.expr = state.result + value;
+      } else {
+        state.expr += value;
+      }
+      state.activeOp = value;
+      state.justEvaluated = false;
+      break;
+    }
+    case 'equals': {
+      if (!state.expr) break;
+      try {
+        const num = Parser.evaluate(state.expr);
+        const fmt = formatNumber(num);
+        historyAdd(humanExpr(state.expr), fmt);
+        Dispatcher.dispatch(state.expr, num);
+        state.result = fmt;
+        state.expr = fmt;
+        state.justEvaluated = true;
+        state.activeOp = null;
+        popResult();
+      } catch (err) {
+        state.result = err.message === 'Division by zero' ? 'Div / 0' : 'Error';
+        state.expr = '';
+        state.isError = true;
+      }
+      break;
+    }
+    case 'percent': {
+      if (!state.expr) break;
+      try {
+        const pct = formatNumber(Parser.evaluate(state.expr) / 100);
+        state.expr = pct;
+        state.result = pct;
+      } catch { /* ignore */ }
+      break;
+    }
+    case 'back': {
+      if (state.justEvaluated) {
+        state.expr = '';
+        state.result = '0';
+        state.justEvaluated = false;
+        break;
+      }
+      state.expr = state.expr.slice(0, -1);
+      state.result = state.expr || '0';
+      break;
+    }
+    case 'clear': {
+      state.expr = '';
+      state.result = '0';
+      state.justEvaluated = false;
+      state.activeOp = null;
+      state.isError = false;
+      break;
+    }
+  }
+  render();
+}
+
+/* Button clicks */
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.value, btn) );
+});
+
+/* Keyboard map */
+const KEY_MAP = {
+  '0':{ a:'digit', v:'0'}, '1':{ a:'digit', v:'1'}, '2':{ a:'digit', v:'2'},
+  '3':{ a:'digit', v:'3'}, '4':{ a:'digit', v:'4'}, '5':{ a:'digit', v:'5'},
+  '6':{ a:'digit', v:'6'}, '7':{ a:'digit', v:'7'}, '8':{ a:'digit', v:'8'},
+  '9':{ a:'digit', v:'9'}, '+':{ a:'op', v:'+'}, '-':{ a:'op', v:'-'},
+  '*':{ a:'op', v:'*'}, '/':{ a:'op', v:'/'}, '.':{ a:'decimal'},
+  ',':{ a:'decimal'}, 'Enter': { a:'equals'}, '=':{ a:'equals'},
+  'Backspace':{ a:'back' }, 'Escape': { a:'clear' }, 'Delete':{ a:'clear'},
+  '%': { a:'percent'}, 'h': { a:'_history' }, 'H':{ a:'_history' },
+};
+
+function flashKey(a, v) {
+  const sel = v ? `.btn[data-action="${a}"][data-value="${v}"]` : `.btn[data-action="${a}"]`;
+  const el = document.querySelector(sel);
+  if (!el) return;
+  el.classList.add('kb-active');
+  setTimeout(() => el.classList.remove('kb-active'), 130);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === '/') e.preventDefault();
+  const m = KEY_MAP[e.key];
+  if (!m) return;
+  if (m.a === '_history') {
+    toggleHistory();
+    return;
+  }
+  flashKey(m.a, m.v);
+  const srcBtn = m.v ? document.querySelector(`.btn[data-action="${m.a}"][data-value="${m.v}"]`) : document.querySelector(`.btn[data-action="${m.a}"]`);
+  handleAction(m.a, m.v, srcBtn);
+});
+
+/* ── Boot ── */
+render();
+renderHistory();
