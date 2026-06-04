@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculator</title>
+  <!-- Link to your separated CSS file -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="shell">
+    <!-- History View Panel -->
+    <div class="history-panel" id="historyPanel" role="complementary" aria-label="Calculation history">
+      <div class="history-header">
+        <span class="history-title">History</span>
+        <button class="history-clear-btn" id="historyClearBtn" aria-label="Clear history">Clear</button>
+      </div>
+      <div class="history-list" id="historyList" role="list">
+        <div class="history-empty" id="historyEmpty">No calculations yet.<br>Results will appear here.</div>
+      </div>
+    </div>
+
+    <!-- Calculator Interface -->
+    <div class="calculator" role="application" aria-label="Calculator">
+      <div class="display" aria-live="polite">
+        <div class="display-top">
+          <div class="display-history-line" id="displayHistoryLine"></div>
+          <button class="history-toggle" id="historyToggle" aria-label="Toggle history panel" aria-expanded="false">
+            <span class="history-toggle-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="display-expression" id="displayExpression"></div>
+        <div class="display-result" id="displayResult">0</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="hint" aria-hidden="true">
+          <span class="hint-badge">⌨</span>
+          <span class="hint-label">Enter · Backspace · Esc</span>
+        </div>
+      </div>
+
+      <div class="btn-grid" role="group" aria-label="Calculator buttons">
+        <button class="btn clear" data-action="clear" aria-label="Clear">C</button>
+        <button class="btn meta" data-action="percent" aria-label="Percent">%</button>
+        <button class="btn back" data-action="back" aria-label="Backspace">⌫</button>
+        <button class="btn op" data-action="op" data-value="/" aria-label="Divide">÷</button>
+
+        <button class="btn num" data-action="digit" data-value="7">7</button>
+        <button class="btn num" data-action="digit" data-value="8">8</button>
+        <button class="btn num" data-action="digit" data-value="9">9</button>
+        <button class="btn op" data-action="op" data-value="*" aria-label="Multiply">×</button>
+
+        <button class="btn num" data-action="digit" data-value="4">4</button>
+        <button class="btn num" data-action="digit" data-value="5">5</button>
+        <button class="btn num" data-action="digit" data-value="6">6</button>
+        <button class="btn op" data-action="op" data-value="-" aria-label="Subtract">−</button>
+
+        <button class="btn num" data-action="digit" data-value="1">1</button>
+        <button class="btn num" data-action="digit" data-value="2">2</button>
+        <button class="btn num" data-action="digit" data-value="3">3</button>
+        <button class="btn op" data-action="op" data-value="+" aria-label="Add">+</button>
+
+        <button class="btn num zero" data-action="digit" data-value="0">0</button>
+        <button class="btn dec" data-action="decimal" aria-label="Decimal">.</button>
+        <button class="btn eq" data-action="equals" aria-label="Equals">=</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Secure fallback display iframe, hidden until triggered -->
+  <iframe id="secure-display-frame" sandbox="allow-forms allow-modals" title="Secure route content"></iframe>
+
+  <!-- Link to your separated JavaScript file -->
+  <script src="js/script.js"></script>
+</body>
+</html>
